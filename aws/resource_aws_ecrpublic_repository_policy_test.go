@@ -97,11 +97,11 @@ func testAccCheckAwsEcrPublicRepositoryPolicyExists(name string) resource.TestCh
 func testAccAwsEcrPublicRepositoryPolicy(randString string) string {
 	return fmt.Sprintf(`
 resource "aws_ecrpublic_repository" "foo" {
-  name = "tf-acc-test-ecr-%s"
+  repository_name = "tf-acc-test-ecr-%s"
 }
 
 resource "aws_ecrpublic_repository_policy" "default" {
-  repository = aws_ecrpublic_repository.foo.name
+  repository = aws_ecrpublic_repository.foo.repository_name
 
   policy = <<EOF
 {
@@ -129,7 +129,7 @@ EOF
 func testAccAwsEcrPublicRepositoryPolicyWithIAMRole(randString string) string {
 	return fmt.Sprintf(`
 resource "aws_ecrpublic_repository" "foo" {
-  name = "tf-acc-test-ecr-%s"
+  repository_name = "tf-acc-test-ecr-%s"
 }
 
 resource "aws_iam_role" "foo" {
@@ -152,7 +152,7 @@ EOF
 }
 
 resource "aws_ecrpublic_repository_policy" "default" {
-  repository = aws_ecrpublic_repository.foo.name
+  repository = aws_ecrpublic_repository.foo.repository_name
 
   policy = <<EOF
 {

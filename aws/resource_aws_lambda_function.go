@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/lambda"
+	"github.com/hashicorp/aws-sdk-go-base/tfawserr"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -808,25 +809,24 @@ func resourceAwsLambdaFunctionRead(d *schema.ResourceData, meta interface{}) err
 		return nil
 	}
 
-	codeSigningConfigInput := &lambda.GetFunctionCodeSigningConfigInput{
-		FunctionName: aws.String(d.Get("function_name").(string)),
-	}
-
 	// Code Signing is only supported on zip packaged lambda functions.
-	if *function.PackageType == lambda.PackageTypeZip {
+	var codeSigningConfigArn string
+
+	if aws.StringValue(function.PackageType) == lambda.PackageTypeZip {
+		codeSigningConfigInput := &lambda.GetFunctionCodeSigningConfigInput{
+			FunctionName: aws.String(d.Id()),
+		}
 		getCodeSigningConfigOutput, err := conn.GetFunctionCodeSigningConfig(codeSigningConfigInput)
 		if err != nil {
 			return fmt.Errorf("error getting Lambda Function (%s) code signing config %w", d.Id(), err)
 		}
 
-		if getCodeSigningConfigOutput == nil || getCodeSigningConfigOutput.CodeSigningConfigArn == nil {
-			d.Set("code_signing_config_arn", "")
-		} else {
-			d.Set("code_signing_config_arn", getCodeSigningConfigOutput.CodeSigningConfigArn)
+		if getCodeSigningConfigOutput != nil {
+			codeSigningConfigArn = aws.StringValue(getCodeSigningConfigOutput.CodeSigningConfigArn)
 		}
-	} else {
-		d.Set("code_signing_config_arn", "")
 	}
+
+	d.Set("code_signing_config_arn", codeSigningConfigArn)
 
 	return nil
 }
@@ -861,6 +861,11 @@ func resourceAwsLambdaFunctionDelete(d *schema.ResourceData, meta interface{}) e
 	}
 
 	_, err := conn.DeleteFunction(params)
+
+	if tfawserr.ErrCodeEquals(err, lambda.ErrCodeResourceNotFoundException) {
+		return nil
+	}
+
 	if err != nil {
 		return fmt.Errorf("error deleting Lambda Function (%s): %w", d.Id(), err)
 	}

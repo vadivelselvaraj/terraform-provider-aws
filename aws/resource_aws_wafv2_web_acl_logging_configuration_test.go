@@ -463,7 +463,7 @@ func TestAccAwsWafv2WebACLLoggingConfiguration_updateEmptyRedactedFields(t *test
 	})
 }
 
-func TestAccAwsWafv2WebACLLoggingConfiguration_webACLDisappears(t *testing.T) {
+func TestAccAwsWafv2WebACLLoggingConfiguration_disappears_WebAcl(t *testing.T) {
 	var v wafv2.LoggingConfiguration
 	rName := acctest.RandomWithPrefix("tf-acc-test")
 	resourceName := "aws_wafv2_web_acl_logging_configuration.test"
@@ -557,7 +557,8 @@ data "aws_partition" "current" {}
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "firehose" {
-  name               = "%[1]s"
+  name = "%[1]s"
+
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",

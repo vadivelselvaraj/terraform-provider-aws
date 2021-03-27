@@ -21,8 +21,9 @@ func TestAccAWSRouteDataSource_basic(t *testing.T) {
 	rName := acctest.RandomWithPrefix("tf-acc-test")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
+		PreCheck:   func() { testAccPreCheck(t) },
+		ErrorCheck: testAccErrorCheck(t, ec2.EndpointsID),
+		Providers:  testAccProviders,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceAwsRouteConfigBasic(rName),
@@ -47,20 +48,19 @@ func TestAccAWSRouteDataSource_basic(t *testing.T) {
 }
 
 func TestAccAWSRouteDataSource_TransitGatewayID(t *testing.T) {
-	var route ec2.Route
 	dataSourceName := "data.aws_route.test"
 	resourceName := "aws_route.test"
 	rName := acctest.RandomWithPrefix("tf-acc-test")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
+		ErrorCheck:   testAccErrorCheck(t, ec2.EndpointsID),
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAWSRouteDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAWSRouteDataSourceConfigIpv4TransitGateway(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAWSRouteExists(resourceName, &route),
 					resource.TestCheckResourceAttrPair(resourceName, "destination_cidr_block", dataSourceName, "destination_cidr_block"),
 					resource.TestCheckResourceAttrPair(resourceName, "route_table_id", dataSourceName, "route_table_id"),
 					resource.TestCheckResourceAttrPair(resourceName, "transit_gateway_id", dataSourceName, "transit_gateway_id"),
@@ -77,6 +77,7 @@ func TestAccAWSRouteDataSource_IPv6DestinationCidr(t *testing.T) {
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
+		ErrorCheck:   testAccErrorCheck(t, ec2.EndpointsID),
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAWSRouteDestroy,
 		Steps: []resource.TestStep{
@@ -92,23 +93,45 @@ func TestAccAWSRouteDataSource_IPv6DestinationCidr(t *testing.T) {
 }
 
 func TestAccAWSRouteDataSource_LocalGatewayID(t *testing.T) {
-	var route ec2.Route
 	dataSourceName := "data.aws_route.by_local_gateway_id"
 	resourceName := "aws_route.test"
 	rName := acctest.RandomWithPrefix("tf-acc-test")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t); testAccPreCheckAWSOutpostsOutposts(t) },
+		ErrorCheck:   testAccErrorCheck(t, ec2.EndpointsID),
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAWSRouteDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAWSRouteDataSourceConfigIpv4LocalGateway(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckAWSRouteExists(resourceName, &route),
 					resource.TestCheckResourceAttrPair(resourceName, "destination_cidr_block", dataSourceName, "destination_cidr_block"),
 					resource.TestCheckResourceAttrPair(resourceName, "route_table_id", dataSourceName, "route_table_id"),
 					resource.TestCheckResourceAttrPair(resourceName, "local_gateway_id", dataSourceName, "local_gateway_id"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccAWSRouteDataSource_CarrierGatewayID(t *testing.T) {
+	dataSourceName := "data.aws_route.test"
+	resourceName := "aws_route.test"
+	rName := acctest.RandomWithPrefix("tf-acc-test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t); testAccPreCheckAWSWavelengthZoneAvailable(t) },
+		ErrorCheck:   testAccErrorCheck(t, ec2.EndpointsID),
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAWSRouteDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAWSRouteDataSourceConfigIpv4CarrierGateway(rName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPair(resourceName, "destination_cidr_block", dataSourceName, "destination_cidr_block"),
+					resource.TestCheckResourceAttrPair(resourceName, "route_table_id", dataSourceName, "route_table_id"),
+					resource.TestCheckResourceAttrPair(resourceName, "carrier_gateway_id", dataSourceName, "carrier_gateway_id"),
 				),
 			},
 		},
@@ -349,6 +372,45 @@ data "aws_route" "by_local_gateway_id" {
   route_table_id   = aws_route_table.test.id
   local_gateway_id = data.aws_ec2_local_gateway.first.id
   depends_on       = [aws_route.test]
+}
+`, rName)
+}
+
+func testAccAWSRouteDataSourceConfigIpv4CarrierGateway(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_vpc" "test" {
+  cidr_block = "10.0.0.0/16"
+
+  tags = {
+    Name = %[1]q
+  }
+}
+
+resource "aws_ec2_carrier_gateway" "test" {
+  vpc_id = aws_vpc.test.id
+
+  tags = {
+    Name = %[1]q
+  }
+}
+
+resource "aws_route_table" "test" {
+  vpc_id = aws_vpc.test.id
+
+  tags = {
+    Name = %[1]q
+  }
+}
+
+resource "aws_route" "test" {
+  destination_cidr_block = "0.0.0.0/0"
+  route_table_id         = aws_route_table.test.id
+  carrier_gateway_id     = aws_ec2_carrier_gateway.test.id
+}
+
+data "aws_route" "test" {
+  route_table_id     = aws_route.test.route_table_id
+  carrier_gateway_id = aws_route.test.carrier_gateway_id
 }
 `, rName)
 }

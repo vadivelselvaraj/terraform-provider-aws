@@ -28,9 +28,9 @@ which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).
 
 ## Example Usage
 
-### Certificate creation
+### Create Certificate
 
-```hcl
+```terraform
 resource "aws_acm_certificate" "cert" {
   domain_name       = "example.com"
   validation_method = "DNS"
@@ -45,9 +45,9 @@ resource "aws_acm_certificate" "cert" {
 }
 ```
 
-### Importing an existing certificate
+### Existing Certificate Body Import
 
-```hcl
+```terraform
 resource "tls_private_key" "example" {
   algorithm = "RSA"
 }
@@ -80,7 +80,7 @@ resource "aws_acm_certificate" "cert" {
 
 See the [`aws_acm_certificate_validation` resource](acm_certificate_validation.html) for a full example of performing DNS validation.
 
-```hcl
+```terraform
 resource "aws_route53_record" "example" {
   for_each = {
     for dvo in aws_acm_certificate.example.domain_validation_options : dvo.domain_name => {

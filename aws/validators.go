@@ -846,6 +846,7 @@ func validateIpv6CIDRBlock(cidr string) error {
 	return nil
 }
 
+// TODO Replace with tfnet.CIDRBlocksEqual.
 // cidrBlocksEqual returns whether or not two CIDR blocks are equal:
 // - Both CIDR blocks parse to an IP address and network
 // - The string representation of the IP addresses are equal
@@ -1214,25 +1215,6 @@ func validateSfnStateMachineName(v interface{}, k string) (ws []string, errors [
 		errors = append(errors, fmt.Errorf(
 			"%q must be composed with only these characters [a-zA-Z0-9-_]: %v", k, value))
 	}
-	return
-}
-
-func validateDmsCertificateId(v interface{}, k string) (ws []string, es []error) {
-	val := v.(string)
-
-	if len(val) > 255 {
-		es = append(es, fmt.Errorf("%q must not be longer than 255 characters", k))
-	}
-	if !regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-]+$").MatchString(val) {
-		es = append(es, fmt.Errorf("%q must start with a letter, only contain alphanumeric characters and hyphens", k))
-	}
-	if strings.Contains(val, "--") {
-		es = append(es, fmt.Errorf("%q must not contain consecutive hyphens", k))
-	}
-	if strings.HasSuffix(val, "-") {
-		es = append(es, fmt.Errorf("%q must not end in a hyphen", k))
-	}
-
 	return
 }
 
@@ -2425,7 +2407,7 @@ var validateCloudWatchEventCustomEventBusName = validation.All(
 
 var validateCloudWatchEventBusName = validation.All(
 	validation.StringLenBetween(1, 256),
-	validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9._\-]+$`), ""),
+	validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9._\-/]+$`), ""),
 )
 
 var validateCloudWatchEventArchiveName = validation.All(
